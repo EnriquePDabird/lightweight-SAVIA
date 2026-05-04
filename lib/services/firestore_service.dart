@@ -50,7 +50,7 @@ class FirestoreService {
     }
   }
 
-  // NUEVO: Método para escuchar los receptores de una campaña en tiempo real
+  // Método para escuchar los receptores de una campaña en tiempo real
   Stream<List<Map<String, dynamic>>> getReceiversStream(String campaignId) {
     return _db
         .collection('tests')
