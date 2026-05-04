@@ -63,9 +63,7 @@ class FirestoreService {
         .snapshots() // 'snapshots()' crea la conexión en tiempo real
         .map((snapshot) {
           // Convertimos cada documento encontrado en un Mapa (diccionario)
-          return snapshot.docs
-              .map((doc) => doc.data() as Map<String, dynamic>)
-              .toList();
+          return snapshot.docs.map((doc) => doc.data()).toList();
         });
   }
 }

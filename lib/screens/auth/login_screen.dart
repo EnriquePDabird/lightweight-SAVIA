@@ -59,20 +59,22 @@ class _LoginScreenState extends State<LoginScreen> {
               backgroundColor: Colors.green,
             ),
           );
-
-          // 1. Extraemos el ID de la campaña de los datos que trajimos de Firestore
           final String campaignId = userData['campaignId'] ?? '';
+          // NUEVO: Extraemos el nombre y apellido. Usamos '' por defecto si son nulos.
+          final String firstName = userData['name'] ?? '';
+          final String lastName = userData['lastName'] ?? '';
 
           if (campaignId.isNotEmpty) {
-            // 2. Por seguridad en Flutter, al usar 'await' debemos confirmar que la pantalla sigue activa
             if (!mounted) return;
 
-            // 3. Navegamos al Home pasándole el ID. Usamos "pushReplacement" para destruir
-            // la pantalla de Login y que el usuario no pueda volver pulsando "Atrás".
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (context) => HomeScreen(campaignId: campaignId),
+                builder: (context) => HomeScreen(
+                  campaignId: campaignId,
+                  userName: firstName, // Pasamos el nombre
+                  userLastName: lastName, // Pasamos el apellido
+                ),
               ),
             );
           } else {
