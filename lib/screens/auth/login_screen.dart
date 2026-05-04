@@ -41,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (user != null) {
       // 2. Si el login fue exitoso, buscamos sus datos en Firestore
-      final userData = await FirestoreService().getUserDataByEmail(user.email!);
+      final userData = await FirestoreService().getUserDataById(user.uid);
 
       setState(() {
         _isLoading = false;
@@ -49,8 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (userData != null) {
         // Tenemos los datos Leemos si está activo y su rol
-        final bool isActive =
-            userData['active'] == "true"; // Según tu BD es un String
+        final bool isActive = userData['active'] == true;
         final String role = userData['role'] ?? 'sin_rol';
 
         if (isActive) {
