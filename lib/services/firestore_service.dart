@@ -48,4 +48,17 @@ class FirestoreService {
       return null;
     }
   }
+  // Método para escuchar los receptores de una campaña en tiempo real
+  Stream<List<Map<String, dynamic>>> getReceiversStream(String campaignId) {
+    return _db
+        .collection('tests')
+        .doc('app_tests')
+        .collection('campaignReceivers')
+        .where('campaignId', isEqualTo: campaignId) // Trae solo los de esta campaña
+        .snapshots() // 'snapshots()' crea la conexión en tiempo real
+        .map((snapshot) {
+          // Convertimos cada documento encontrado en un Mapa (diccionario)
+          return snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+        });
+  }
 }
