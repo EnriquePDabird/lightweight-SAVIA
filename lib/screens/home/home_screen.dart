@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import '../../services/firestore_service.dart';
+import 'receiver_form_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final String campaignId;
-  final String userName; // NUEVO: Recibimos el nombre
-  final String userLastName; // NUEVO: Recibimos el apellido
+  final String userName;
+  final String userLastName;
+  final String userRole;
 
   const HomeScreen({
     super.key,
     required this.campaignId,
-    required this.userName, // NUEVO
-    required this.userLastName, // NUEVO
+    required this.userName,
+    required this.userLastName,
+    required this.userRole, // <-- NUEVO
   });
 
   @override
@@ -20,12 +23,28 @@ class HomeScreen extends StatelessWidget {
         ? 'Usuario'
         : '$userName $userLastName'.trim();
 
+    final bool isTechnic = userRole == 'technic';
     return Scaffold(
       appBar: AppBar(
         title: const Text('Panel de Control'),
         backgroundColor: Colors.blueAccent,
         foregroundColor: Colors.white,
       ),
+      floatingActionButton: isTechnic
+          ? FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        ReceiverFormScreen(campaignId: campaignId),
+                  ),
+                );
+              },
+              backgroundColor: Colors.blueAccent,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
       body: FutureBuilder<Map<String, dynamic>?>(
         future: FirestoreService().getCampaignById(campaignId),
         builder: (context, snapshot) {
@@ -169,16 +188,105 @@ class HomeScreen extends StatelessWidget {
                                 Icons.person,
                                 color: Colors.blueGrey,
                               ),
+                              // Mostramos el nombre, si no hay, ponemos 'Sin nombre'
                               title: Text(
-                                'Teléfono: $phone',
+                                receiver['name'] != null &&
+                                        receiver['name'].toString().isNotEmpty
+                                    ? receiver['name']
+                                    : 'Sin nombre',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              trailing: const Icon(
-                                Icons.chevron_right,
-                                color: Colors.grey,
-                              ),
+                              // Pasamos el teléfono al subtítulo
+                              subtitle: Text('Tel: $phone'),
+
+                              // La magia de los permisos: Si es técnico, ve botones. Si no, una flecha.
+                              trailing: isTechnic
+                                  ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // BOTÓN EDITAR
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.edit,
+                                            color: Colors.blue,
+                                          ),
+                                          onPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    ReceiverFormScreen(
+                                                      campaignId: campaignId,
+                                                      existingReceiver:
+                                                          receiver, // Pasamos los datos para editar
+                                                    ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                        // BOTÓN BORRAR
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () async {
+                                            // Cuadro de confirmación antes de borrar
+                                            bool confirm =
+                                                await showDialog(
+                                                  context: context,
+                                                  builder: (ctx) => AlertDialog(
+                                                    title: const Text(
+                                                      '¿Borrar receptor?',
+                                                    ),
+                                                    content: const Text(
+                                                      'Esta acción no se puede deshacer.',
+                                                    ),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                              ctx,
+                                                              false,
+                                                            ),
+                                                        child: const Text(
+                                                          'Cancelar',
+                                                        ),
+                                                      ),
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                              ctx,
+                                                              true,
+                                                            ),
+                                                        child: const Text(
+                                                          'Borrar',
+                                                          style: TextStyle(
+                                                            color: Colors.red,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ) ??
+                                                false;
+
+                                            if (confirm) {
+                                              await FirestoreService()
+                                                  .deleteReceiver(
+                                                    receiver['docId'],
+                                                  );
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    )
+                                  : const Icon(
+                                      Icons.chevron_right,
+                                      color: Colors.grey,
+                                    ),
                               onTap: () {
                                 print(
                                   'Clic en el receptor con teléfono: $phone',

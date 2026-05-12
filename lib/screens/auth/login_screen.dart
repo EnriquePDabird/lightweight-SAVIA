@@ -43,6 +43,8 @@ class _LoginScreenState extends State<LoginScreen> {
       // 2. Si el login fue exitoso, buscamos sus datos en Firestore
       final userData = await FirestoreService().getUserDataById(user.uid);
 
+      if (!mounted) return;
+
       setState(() {
         _isLoading = false;
       });
@@ -50,30 +52,23 @@ class _LoginScreenState extends State<LoginScreen> {
       if (userData != null) {
         // Tenemos los datos Leemos si está activo y su rol
         final bool isActive = userData['active'] == true;
-        final String role = userData['role'] ?? 'sin_rol';
 
         if (isActive) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Has iniciado sesión con permisos: $role'),
-              backgroundColor: Colors.green,
-            ),
-          );
           final String campaignId = userData['campaignId'] ?? '';
-          // NUEVO: Extraemos el nombre y apellido. Usamos '' por defecto si son nulos.
           final String firstName = userData['name'] ?? '';
           final String lastName = userData['lastName'] ?? '';
+          final String userRole =
+              userData['role'] ?? ''; // <-- Extraemos el rol
 
           if (campaignId.isNotEmpty) {
-            if (!mounted) return;
-
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
                 builder: (context) => HomeScreen(
                   campaignId: campaignId,
-                  userName: firstName, // Pasamos el nombre
-                  userLastName: lastName, // Pasamos el apellido
+                  userName: firstName,
+                  userLastName: lastName,
+                  userRole: userRole, // <-- Pasamos el rol a HomeScreen
                 ),
               ),
             );
@@ -97,12 +92,13 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Error: No se encontraro  n datos del usuario.'),
+            content: Text('Error: No se encontraron datos del usuario.'),
             backgroundColor: Colors.red,
           ),
         );
       }
     } else {
+      if (!mounted) return;
       // Falló el login en Auth
       setState(() {
         _isLoading = false;

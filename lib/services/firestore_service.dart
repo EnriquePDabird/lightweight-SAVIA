@@ -56,14 +56,42 @@ class FirestoreService {
         .collection('tests')
         .doc('app_tests')
         .collection('campaignReceivers')
-        .where(
-          'campaignId',
-          isEqualTo: campaignId,
-        ) // Trae solo los de esta campaña
-        .snapshots() // 'snapshots()' crea la conexión en tiempo real
+        .where('campaignId', isEqualTo: campaignId)
+        .snapshots()
         .map((snapshot) {
-          // Convertimos cada documento encontrado en un Mapa (diccionario)
-          return snapshot.docs.map((doc) => doc.data()).toList();
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['docId'] = doc.id;
+            return data;
+          }).toList();
         });
+  } // <--- ¡AQUÍ CERRAMOS EL MÉTODO getReceiversStream!
+
+  // --- MÉTODOS CRUD PARA RECEPTORES ---
+
+  Future<void> createReceiver(Map<String, dynamic> data) async {
+    await _db
+        .collection('tests')
+        .doc('app_tests')
+        .collection('campaignReceivers')
+        .add(data);
+  }
+
+  Future<void> updateReceiver(String docId, Map<String, dynamic> data) async {
+    await _db
+        .collection('tests')
+        .doc('app_tests')
+        .collection('campaignReceivers')
+        .doc(docId)
+        .update(data);
+  }
+
+  Future<void> deleteReceiver(String docId) async {
+    await _db
+        .collection('tests')
+        .doc('app_tests')
+        .collection('campaignReceivers')
+        .doc(docId)
+        .delete();
   }
 }
