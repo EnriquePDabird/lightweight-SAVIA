@@ -293,9 +293,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                     MaterialPageRoute(
                                       builder: (context) =>
                                           CampaignDetailScreen(
-                                            campaignId: campaignId,
-                                            userRole: widget.userRole,
-                                          ),
+                                        campaignId: campaignId,
+                                        userRole: widget.userRole,
+                                        userOrganization: widget.organization,
+                                      ),
                                     ),
                                   );
                                 },

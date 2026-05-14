@@ -26,6 +26,8 @@ String receiverHaystack(Map<String, dynamic> r) {
     _txt(r['province']),
     _txt(r['municipality']),
     _txt(r['district']),
+    _txt(r['latitud']),
+    _txt(r['longitud']),
     _txt(r['campaignId']),
   ];
   final loc = r['location'];

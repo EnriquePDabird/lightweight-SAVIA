@@ -4,11 +4,13 @@ import '../../services/firestore_service.dart';
 
 class ReceiverFormScreen extends StatefulWidget {
   final String campaignId;
+  final String userOrganization;
   final Map<String, dynamic>? existingReceiver;
 
   const ReceiverFormScreen({
     super.key,
     required this.campaignId,
+    required this.userOrganization,
     this.existingReceiver,
   });
 
@@ -18,15 +20,14 @@ class ReceiverFormScreen extends StatefulWidget {
 
 class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Basic Info
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
   late TextEditingController _emailController;
-  late TextEditingController _organizationController;
   late TextEditingController _groupController;
   late TextEditingController _orderController;
-  
+
   String _selectedSex = 'Hombre';
   bool _isActive = true;
 
@@ -36,7 +37,7 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
   late TextEditingController _provinceController;
   late TextEditingController _municipalityController;
   late TextEditingController _districtController;
-  
+
   // Coordinates
   late TextEditingController _latController;
   late TextEditingController _lngController;
@@ -54,17 +55,18 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
   void initState() {
     super.initState();
     final r = widget.existingReceiver;
-    
+
     // Basic Info
     _nameController = TextEditingController(text: r?['name'] ?? '');
     _phoneController = TextEditingController(text: r?['phone'] ?? '');
     _emailController = TextEditingController(text: r?['email'] ?? '');
-    _organizationController = TextEditingController(text: r?['organization'] ?? '');
     _groupController = TextEditingController(text: r?['group'] ?? '');
-    _orderController = TextEditingController(text: (r?['order'] ?? 1).toString());
-    
+    _orderController = TextEditingController(
+      text: (r?['order'] ?? 1).toString(),
+    );
+
     _isActive = r?['active'] ?? true;
-    
+
     String existingSex = r?['sex'] ?? 'Hombre';
     if (['Hombre', 'Mujer', 'Otro'].contains(existingSex)) {
       _selectedSex = existingSex;
@@ -78,24 +80,48 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
 
     // Location
     final loc = r?['location'] as Map<String, dynamic>?;
-    _countryController = TextEditingController(text: loc?['country'] ?? r?['country'] ?? '');
-    _regionController = TextEditingController(text: loc?['region'] ?? r?['region'] ?? '');
-    _provinceController = TextEditingController(text: loc?['province'] ?? r?['province'] ?? '');
-    _municipalityController = TextEditingController(text: loc?['municipality'] ?? r?['municipality'] ?? '');
-    _districtController = TextEditingController(text: loc?['district'] ?? r?['district'] ?? '');
+    _countryController = TextEditingController(
+      text: loc?['country'] ?? r?['country'] ?? '',
+    );
+    _regionController = TextEditingController(
+      text: loc?['region'] ?? r?['region'] ?? '',
+    );
+    _provinceController = TextEditingController(
+      text: loc?['province'] ?? r?['province'] ?? '',
+    );
+    _municipalityController = TextEditingController(
+      text: loc?['municipality'] ?? r?['municipality'] ?? '',
+    );
+    _districtController = TextEditingController(
+      text: loc?['district'] ?? r?['district'] ?? '',
+    );
 
-    // Coordinates
+    // Coordinates (coordenadas anidadas o latitud/longitud en raíz)
     final coords = loc?['coordenadas'] as Map<String, dynamic>?;
-    _latController = TextEditingController(text: coords?['lat'] ?? '');
-    _lngController = TextEditingController(text: coords?['lng'] ?? '');
+    String latText = coords?['lat']?.toString() ?? '';
+    String lngText = coords?['lng']?.toString() ?? '';
+    if (latText.isEmpty) latText = r?['latitud']?.toString() ?? '';
+    if (lngText.isEmpty) lngText = r?['longitud']?.toString() ?? '';
+    _latController = TextEditingController(text: latText);
+    _lngController = TextEditingController(text: lngText);
 
     // Location Codes
     final codes = loc?['locationCodes'] as Map<String, dynamic>?;
-    _countryCodeController = TextEditingController(text: codes?['country_code'] ?? '');
-    _admin1CodeController = TextEditingController(text: codes?['admin1_code'] ?? '');
-    _admin2CodeController = TextEditingController(text: codes?['admin2_code'] ?? '');
-    _admin3CodeController = TextEditingController(text: codes?['admin3_code'] ?? '');
-    _admin4CodeController = TextEditingController(text: codes?['admin4_code'] ?? '');
+    _countryCodeController = TextEditingController(
+      text: codes?['country_code'] ?? '',
+    );
+    _admin1CodeController = TextEditingController(
+      text: codes?['admin1_code'] ?? '',
+    );
+    _admin2CodeController = TextEditingController(
+      text: codes?['admin2_code'] ?? '',
+    );
+    _admin3CodeController = TextEditingController(
+      text: codes?['admin3_code'] ?? '',
+    );
+    _admin4CodeController = TextEditingController(
+      text: codes?['admin4_code'] ?? '',
+    );
   }
 
   @override
@@ -103,7 +129,6 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
     _nameController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
-    _organizationController.dispose();
     _groupController.dispose();
     _orderController.dispose();
     _countryController.dispose();
@@ -127,6 +152,9 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final latTrim = _latController.text.trim();
+      final lngTrim = _lngController.text.trim();
+
       final data = {
         'active': _isActive,
         'campaignId': widget.campaignId,
@@ -134,11 +162,10 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
         'district': _districtController.text.trim(),
         'email': _emailController.text.trim(),
         'group': _groupController.text.trim(),
+        'latitud': latTrim,
+        'longitud': lngTrim,
         'location': {
-          'coordenadas': {
-            'lat': _latController.text.trim(),
-            'lng': _lngController.text.trim(),
-          },
+          'coordenadas': {'lat': latTrim, 'lng': lngTrim},
           'locationCodes': {
             'admin1_code': _admin1CodeController.text.trim(),
             'admin2_code': _admin2CodeController.text.trim(),
@@ -152,7 +179,7 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
         'municipality': _municipalityController.text.trim(),
         'name': _nameController.text.trim(),
         'order': int.tryParse(_orderController.text.trim()) ?? 1,
-        'organization': _organizationController.text.trim(),
+        'organization': widget.userOrganization,
         'phone': _phoneController.text.trim(),
         'province': _provinceController.text.trim(),
         'region': _regionController.text.trim(),
@@ -176,9 +203,9 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) {
@@ -188,7 +215,12 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
   }
 
   // Helper widget for text fields
-  Widget _buildTextField(TextEditingController controller, String label, {bool isNumber = false, bool isRequired = false}) {
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label, {
+    bool isNumber = false,
+    bool isRequired = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: TextFormField(
@@ -198,12 +230,14 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
           border: const OutlineInputBorder(),
         ),
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-        validator: isRequired ? (value) {
-          if (value == null || value.trim().isEmpty) {
-            return 'Por favor, ingresa $label';
-          }
-          return null;
-        } : null,
+        validator: isRequired
+            ? (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Por favor, ingresa $label';
+                }
+                return null;
+              }
+            : null,
       ),
     );
   }
@@ -236,17 +270,31 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
                           _isActive = val;
                         });
                       },
-                      activeColor: Colors.blueAccent,
+                      activeThumbColor: Colors.blueAccent,
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // --- Información General ---
-                    const Text('Información General', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Información General',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const Divider(),
-                    _buildTextField(_nameController, 'Nombre', isRequired: true),
-                    _buildTextField(_phoneController, 'Teléfono', isRequired: true),
+                    _buildTextField(
+                      _nameController,
+                      'Nombre',
+                      isRequired: true,
+                    ),
+                    _buildTextField(
+                      _phoneController,
+                      'Teléfono',
+                      isRequired: true,
+                    ),
                     _buildTextField(_emailController, 'Correo Electrónico'),
-                    
+
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16.0),
                       child: DropdownButtonFormField<String>(
@@ -256,8 +304,14 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
                           border: OutlineInputBorder(),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'Hombre', child: Text('Hombre')),
-                          DropdownMenuItem(value: 'Mujer', child: Text('Mujer')),
+                          DropdownMenuItem(
+                            value: 'Hombre',
+                            child: Text('Hombre'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Mujer',
+                            child: Text('Mujer'),
+                          ),
                           DropdownMenuItem(value: 'Otro', child: Text('Otro')),
                         ],
                         onChanged: (val) {
@@ -269,15 +323,38 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
                         },
                       ),
                     ),
-                    
-                    _buildTextField(_organizationController, 'Organización'),
+
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Organización',
+                          border: OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Color(0xFFF3F4F6),
+                        ),
+                        child: Text(
+                          widget.userOrganization,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
                     _buildTextField(_groupController, 'Grupo'),
                     _buildTextField(_orderController, 'Orden', isNumber: true),
 
                     const SizedBox(height: 24),
-                    
+
                     // --- Ubicación ---
-                    const Text('Ubicación Geográfica', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Ubicación Geográfica',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const Divider(),
                     _buildTextField(_countryController, 'País'),
                     _buildTextField(_regionController, 'Región'),
@@ -288,20 +365,44 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
                     const SizedBox(height: 24),
 
                     // --- Coordenadas ---
-                    const Text('Coordenadas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Coordenadas',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const Divider(),
                     Row(
                       children: [
-                        Expanded(child: _buildTextField(_latController, 'Latitud', isNumber: true)),
+                        Expanded(
+                          child: _buildTextField(
+                            _latController,
+                            'Latitud',
+                            isNumber: true,
+                          ),
+                        ),
                         const SizedBox(width: 16),
-                        Expanded(child: _buildTextField(_lngController, 'Longitud', isNumber: true)),
+                        Expanded(
+                          child: _buildTextField(
+                            _lngController,
+                            'Longitud',
+                            isNumber: true,
+                          ),
+                        ),
                       ],
                     ),
 
                     const SizedBox(height: 24),
 
                     // --- Códigos de Ubicación ---
-                    const Text('Códigos de Ubicación', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Códigos de Ubicación',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const Divider(),
                     _buildTextField(_countryCodeController, 'Country Code'),
                     _buildTextField(_admin1CodeController, 'Admin 1 Code'),
@@ -310,7 +411,7 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
                     _buildTextField(_admin4CodeController, 'Admin 4 Code'),
 
                     const SizedBox(height: 32),
-                    
+
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -320,7 +421,10 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
                           foregroundColor: Colors.white,
                         ),
                         onPressed: _saveReceiver,
-                        child: Text(isEditing ? 'Guardar Cambios' : 'Crear Receptor', style: const TextStyle(fontSize: 16)),
+                        child: Text(
+                          isEditing ? 'Guardar Cambios' : 'Crear Receptor',
+                          style: const TextStyle(fontSize: 16),
+                        ),
                       ),
                     ),
                   ],
