@@ -1,90 +1,148 @@
 import 'package:flutter/material.dart';
 import '../../services/firestore_service.dart';
-import 'receiver_form_screen.dart';
+import '../../utils/list_query_utils.dart';
+import 'campaign_detail_screen.dart';
 
-class HomeScreen extends StatelessWidget {
-  final String campaignId;
+class HomeScreen extends StatefulWidget {
+  final String organization;
   final String userName;
   final String userLastName;
   final String userRole;
 
   const HomeScreen({
     super.key,
-    required this.campaignId,
+    required this.organization,
     required this.userName,
     required this.userLastName,
-    required this.userRole, // <-- NUEVO
+    required this.userRole,
   });
 
   @override
-  Widget build(BuildContext context) {
-    // Unimos nombre y apellido, si ambos están vacíos, ponemos "Usuario" por defecto
-    final String fullName = (userName.isEmpty && userLastName.isEmpty)
-        ? 'Usuario'
-        : '$userName $userLastName'.trim();
+  State<HomeScreen> createState() => _HomeScreenState();
+}
 
-    final bool isTechnic = userRole == 'technic';
+class _HomeScreenState extends State<HomeScreen> {
+  late final Future<List<Map<String, dynamic>>> _campaignsFuture;
+  final TextEditingController _campaignSearch = TextEditingController();
+
+  String? _categoryFilter;
+  CampaignSortMode _campaignSort = CampaignSortMode.nameAsc;
+
+  @override
+  void initState() {
+    super.initState();
+    _campaignsFuture = FirestoreService().getCampaignsByOrganization(
+      widget.organization,
+    );
+  }
+
+  @override
+  void dispose() {
+    _campaignSearch.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String fullName =
+        (widget.userName.isEmpty && widget.userLastName.isEmpty)
+        ? 'Usuario'
+        : '${widget.userName} ${widget.userLastName}'.trim();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Panel de Control'),
         backgroundColor: Colors.blueAccent,
         foregroundColor: Colors.white,
+        actions: [
+          PopupMenuButton<CampaignSortMode>(
+            tooltip: 'Ordenar campañas',
+            initialValue: _campaignSort,
+            onSelected: (m) => setState(() => _campaignSort = m),
+            itemBuilder: (ctx) => [
+              for (final m in CampaignSortMode.values)
+                PopupMenuItem(value: m, child: Text(labelCampaignSort(m))),
+            ],
+          ),
+        ],
       ),
-      floatingActionButton: isTechnic
-          ? FloatingActionButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        ReceiverFormScreen(campaignId: campaignId),
-                  ),
-                );
-              },
-              backgroundColor: Colors.blueAccent,
-              child: const Icon(Icons.add, color: Colors.white),
-            )
-          : null,
-      body: FutureBuilder<Map<String, dynamic>?>(
-        future: FirestoreService().getCampaignById(campaignId),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _campaignsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
-            return const Center(
-              child: Text('No se pudo cargar la información de la campaña.'),
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text(
+                  'No se pudieron cargar las campañas: ${snapshot.error}',
+                  textAlign: TextAlign.center,
+                ),
+              ),
             );
           }
 
-          final campaignData = snapshot.data!;
-          final String campaignName =
-              (campaignData['name'] == null || campaignData['name'] == "")
-              ? "Campaña sin nombre"
-              : campaignData['name'];
-          final String category =
-              (campaignData['category'] == null ||
-                  campaignData['category'] == "")
-              ? "N/A"
-              : campaignData['category'];
-          final String organization =
-              (campaignData['organization'] == null ||
-                  campaignData['organization'] == "")
-              ? "No especificada"
-              : campaignData['organization'];
-          final String timezone =
-              (campaignData['timezone'] == null ||
-                  campaignData['timezone'] == "")
-              ? "No especificada"
-              : campaignData['timezone'];
+          final campaigns = snapshot.data ?? [];
+
+          if (campaigns.isEmpty) {
+            return Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '¡Hola, $fullName!',
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.blueAccent,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Organización: ${widget.organization}',
+                    style: const TextStyle(fontSize: 16, color: Colors.black54),
+                  ),
+                  const Expanded(
+                    child: Center(
+                      child: Text(
+                        'No hay campañas registradas para esta organización.',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final categories = distinctCampaignCategories(campaigns).toList()
+            ..sort();
+
+          final String? effectiveCategory =
+              _categoryFilter != null && categories.contains(_categoryFilter)
+              ? _categoryFilter
+              : null;
+
+          final filtered = filterAndSortCampaigns(
+            campaigns,
+            query: _campaignSearch.text,
+            categoryFilter: effectiveCategory,
+            sort: _campaignSort,
+          );
 
           return Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // NUEVO: Saludo personalizado
                 Text(
                   '¡Hola, $fullName!',
                   style: const TextStyle(
@@ -93,211 +151,158 @@ class HomeScreen extends StatelessWidget {
                     color: Colors.blueAccent,
                   ),
                 ),
-                const SizedBox(height: 24), // Espaciador
-
+                const SizedBox(height: 8),
+                Text(
+                  'Organización: ${widget.organization}',
+                  style: const TextStyle(fontSize: 16, color: Colors.black54),
+                ),
+                const SizedBox(height: 20),
                 const Text(
-                  'Campaña Asignada',
+                  'Campañas',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 12),
-
-                // Tarjeta con la info de la campaña
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _campaignSearch,
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por nombre, categoría, zona horaria, ID…',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    isDense: true,
+                    suffixIcon: _campaignSearch.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _campaignSearch.clear();
+                              setState(() {});
+                            },
+                          )
+                        : null,
                   ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(16),
-                    leading: const CircleAvatar(
-                      backgroundColor: Colors.blueAccent,
-                      child: Icon(Icons.campaign, color: Colors.white),
-                    ),
-                    title: Text(
-                      campaignName,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Categoría: $category'),
-                          Text('Organización: $organization'),
-                          Text('Zona Horaria: $timezone'),
-                          const SizedBox(height: 8),
-                          Text(
-                            'ID: $campaignId',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String?>(
+                        value: effectiveCategory,
+                        decoration: const InputDecoration(
+                          labelText: 'Categoría',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                        ),
+                        items: [
+                          const DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('Todas'),
+                          ),
+                          ...categories.map(
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
                           ),
                         ],
+                        onChanged: (v) => setState(() => _categoryFilter = v),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _categoryFilter = null;
+                          _campaignSearch.clear();
+                          _campaignSort = CampaignSortMode.nameAsc;
+                        });
+                      },
+                      child: const Text('Limpiar'),
+                    ),
+                  ],
                 ),
-
-                const SizedBox(height: 30),
-
-                const Text(
-                  'Receptores Endpoint',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                const SizedBox(height: 6),
+                Text(
+                  '${filtered.length} de ${campaigns.length} campañas · '
+                  '${labelCampaignSort(_campaignSort)}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                 ),
-                const SizedBox(height: 12),
-
+                const SizedBox(height: 8),
                 Expanded(
-                  child: StreamBuilder<List<Map<String, dynamic>>>(
-                    stream: FirestoreService().getReceiversStream(campaignId),
-                    builder: (context, receiversSnapshot) {
-                      if (receiversSnapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      if (!receiversSnapshot.hasData ||
-                          receiversSnapshot.data!.isEmpty) {
-                        return const Center(
+                  child: filtered.isEmpty
+                      ? Center(
                           child: Text(
-                            'Aún no hay receptores en esta campaña.',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontStyle: FontStyle.italic,
-                            ),
+                            'Ninguna campaña coincide con la búsqueda y el filtro.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey.shade700),
                           ),
-                        );
-                      }
+                        )
+                      : ListView.separated(
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: 8),
+                          itemBuilder: (context, index) {
+                            final c = filtered[index];
+                            final String campaignId =
+                                c['campaignId'] as String? ?? '';
+                            final String name =
+                                (c['name'] == null || c['name'] == '')
+                                ? 'Campaña sin nombre'
+                                : c['name'] as String;
+                            final String category =
+                                (c['category'] == null || c['category'] == '')
+                                ? 'N/A'
+                                : c['category'] as String;
+                            final String tz =
+                                (c['timezone'] == null || c['timezone'] == '')
+                                ? '—'
+                                : c['timezone'] as String;
 
-                      final receivers = receiversSnapshot.data!;
-
-                      return ListView.builder(
-                        itemCount: receivers.length,
-                        itemBuilder: (context, index) {
-                          final receiver = receivers[index];
-                          final String phone =
-                              receiver['phone'] ?? 'Sin número';
-
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8.0),
-                            child: ListTile(
-                              leading: const Icon(
-                                Icons.person,
-                                color: Colors.blueGrey,
+                            return Card(
+                              elevation: 3,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              // Mostramos el nombre, si no hay, ponemos 'Sin nombre'
-                              title: Text(
-                                receiver['name'] != null &&
-                                        receiver['name'].toString().isNotEmpty
-                                    ? receiver['name']
-                                    : 'Sin nombre',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w500,
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
                                 ),
-                              ),
-                              // Pasamos el teléfono al subtítulo
-                              subtitle: Text('Tel: $phone'),
-
-                              // La magia de los permisos: Si es técnico, ve botones. Si no, una flecha.
-                              trailing: isTechnic
-                                  ? Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        // BOTÓN EDITAR
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.edit,
-                                            color: Colors.blue,
+                                leading: const CircleAvatar(
+                                  backgroundColor: Colors.blueAccent,
+                                  child: Icon(
+                                    Icons.campaign,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                title: Text(
+                                  name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  'Categoría: $category · Zona: $tz',
+                                ),
+                                isThreeLine: false,
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          CampaignDetailScreen(
+                                            campaignId: campaignId,
+                                            userRole: widget.userRole,
                                           ),
-                                          onPressed: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    ReceiverFormScreen(
-                                                      campaignId: campaignId,
-                                                      existingReceiver:
-                                                          receiver, // Pasamos los datos para editar
-                                                    ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                        // BOTÓN BORRAR
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.delete,
-                                            color: Colors.red,
-                                          ),
-                                          onPressed: () async {
-                                            // Cuadro de confirmación antes de borrar
-                                            bool confirm =
-                                                await showDialog(
-                                                  context: context,
-                                                  builder: (ctx) => AlertDialog(
-                                                    title: const Text(
-                                                      '¿Borrar receptor?',
-                                                    ),
-                                                    content: const Text(
-                                                      'Esta acción no se puede deshacer.',
-                                                    ),
-                                                    actions: [
-                                                      TextButton(
-                                                        onPressed: () =>
-                                                            Navigator.pop(
-                                                              ctx,
-                                                              false,
-                                                            ),
-                                                        child: const Text(
-                                                          'Cancelar',
-                                                        ),
-                                                      ),
-                                                      TextButton(
-                                                        onPressed: () =>
-                                                            Navigator.pop(
-                                                              ctx,
-                                                              true,
-                                                            ),
-                                                        child: const Text(
-                                                          'Borrar',
-                                                          style: TextStyle(
-                                                            color: Colors.red,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ) ??
-                                                false;
-
-                                            if (confirm) {
-                                              await FirestoreService()
-                                                  .deleteReceiver(
-                                                    receiver['docId'],
-                                                  );
-                                            }
-                                          },
-                                        ),
-                                      ],
-                                    )
-                                  : const Icon(
-                                      Icons.chevron_right,
-                                      color: Colors.grey,
                                     ),
-                              onTap: () {
-                                print(
-                                  'Clic en el receptor con teléfono: $phone',
-                                );
-                              },
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
                 ),
               ],
             ),

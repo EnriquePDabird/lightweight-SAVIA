@@ -54,29 +54,29 @@ class _LoginScreenState extends State<LoginScreen> {
         final bool isActive = userData['active'] == true;
 
         if (isActive) {
-          final String campaignId = userData['campaignId'] ?? '';
+          final String org = (userData['organization'] ?? '').toString().trim();
           final String firstName = userData['name'] ?? '';
           final String lastName = userData['lastName'] ?? '';
-          final String userRole =
-              userData['role'] ?? ''; // <-- Extraemos el rol
+          final String userRole = userData['role'] ?? '';
 
-          if (campaignId.isNotEmpty) {
+          if (org.isNotEmpty) {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
                 builder: (context) => HomeScreen(
-                  campaignId: campaignId,
+                  organization: org,
                   userName: firstName,
                   userLastName: lastName,
-                  userRole: userRole, // <-- Pasamos el rol a HomeScreen
+                  userRole: userRole,
                 ),
               ),
             );
           } else {
-            // Si el usuario está activo pero por algún motivo no tiene campaña
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Tu usuario no tiene ninguna campaña asignada.'),
+                content: Text(
+                  'Tu usuario no tiene organización asignada en Firestore.',
+                ),
                 backgroundColor: Colors.orange,
               ),
             );

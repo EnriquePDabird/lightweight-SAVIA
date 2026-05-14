@@ -28,6 +28,32 @@ class FirestoreService {
     }
   }
 
+  /// Campañas cuyo campo [organization] coincide con el del usuario.
+  Future<List<Map<String, dynamic>>> getCampaignsByOrganization(
+    String organization,
+  ) async {
+    if (organization.isEmpty) {
+      return [];
+    }
+    try {
+      final snapshot = await _db
+          .collection('tests')
+          .doc('app_tests')
+          .collection('campaigns')
+          .where('organization', isEqualTo: organization)
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = Map<String, dynamic>.from(doc.data());
+        data['campaignId'] = doc.id;
+        return data;
+      }).toList();
+    } catch (e) {
+      print('Error leyendo campañas por organización: $e');
+      rethrow;
+    }
+  }
+
   // Método para buscar una campaña
   Future<Map<String, dynamic>?> getCampaignById(String campaignId) async {
     try {
