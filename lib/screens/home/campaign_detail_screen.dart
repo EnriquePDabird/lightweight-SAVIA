@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../services/firestore_service.dart';
+import '../../theme/savia_colors.dart';
 import '../../utils/list_query_utils.dart';
 import '../../widgets/receiver_summary_popup.dart';
 import '../../widgets/receivers_map_view.dart';
+import '../../widgets/savia_widgets.dart';
 import 'receiver_form_screen.dart';
 
 class CampaignDetailScreen extends StatefulWidget {
@@ -36,16 +38,29 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
   /// Última lista del stream (para opciones de grupo en filtros).
   List<Map<String, dynamic>> _rawReceiversCache = [];
 
+  final GlobalKey<ReceiversMapViewState> _mapKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     _campaignFuture = FirestoreService().getCampaignById(widget.campaignId);
     _receiversStream = FirestoreService().getReceiversStream(widget.campaignId);
     _receiversTabController = TabController(length: 2, vsync: this);
+    _receiversTabController.addListener(_onReceiversTabChanged);
+  }
+
+  void _onReceiversTabChanged() {
+    if (_receiversTabController.index == 1) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mapKey.currentState?.recenter();
+      });
+    }
+    setState(() {});
   }
 
   @override
   void dispose() {
+    _receiversTabController.removeListener(_onReceiversTabChanged);
     _receiversTabController.dispose();
     _receiverSearch.dispose();
     super.dispose();
@@ -54,11 +69,10 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
   @override
   Widget build(BuildContext context) {
     final bool isTechnic = widget.userRole == 'technic';
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Campaña'),
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
+    return SaviaScaffold(
+      title: 'Campaña',
+      appBar: SaviaAppBar(
+        title: 'Campaña',
         actions: [
           PopupMenuButton<ReceiverSortMode>(
             tooltip: 'Ordenar',
@@ -69,6 +83,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
                 PopupMenuItem(value: m, child: Text(labelReceiverSort(m))),
             ],
           ),
+          const SizedBox(width: 12),
         ],
       ),
       floatingActionButton: isTechnic
@@ -84,8 +99,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
                   ),
                 );
               },
-              backgroundColor: Colors.blueAccent,
-              child: const Icon(Icons.add, color: Colors.white),
+              child: const Icon(Icons.person_add_outlined),
             )
           : null,
       body: FutureBuilder<Map<String, dynamic>?>(
@@ -129,17 +143,17 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-                  child: Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.all(16),
-                      leading: const CircleAvatar(
-                        backgroundColor: Colors.blueAccent,
-                        child: Icon(Icons.campaign, color: Colors.white),
-                      ),
+                        child: Card(
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.all(16),
+                            leading: CircleAvatar(
+                              backgroundColor:
+                                  SaviaColors.primary.withValues(alpha: 0.2),
+                              child: const Icon(
+                                Icons.campaign,
+                                color: SaviaColors.primary,
+                              ),
+                            ),
                       title: Text(
                         campaignName,
                         style: const TextStyle(
@@ -158,10 +172,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
                             const SizedBox(height: 8),
                             Text(
                               'ID: ${widget.campaignId}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
+                                    style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ],
                         ),
@@ -174,13 +185,10 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Receptores',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                            Text(
+                              'Receptores',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
                       const SizedBox(height: 8),
                       TextField(
                         controller: _receiverSearch,
@@ -219,10 +227,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
                             alignment: Alignment.centerLeft,
                             child: Text(
                               'Estado',
-                              style: TextStyle(
-                                color: Colors.grey.shade700,
-                                fontSize: 13,
-                              ),
+                                    style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),
                           const SizedBox(height: 6),
@@ -359,7 +364,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
                           child: Text(
                             'Aún no hay receptores en esta campaña.',
                             style: TextStyle(
-                              color: Colors.grey,
+                              color: SaviaColors.textMuted,
                               fontStyle: FontStyle.italic,
                             ),
                           ),
@@ -390,24 +395,20 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
                           Text(
                             '${filtered.length} de ${raw.length} receptores · '
                             '${labelReceiverSort(_receiverSort)}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade700,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
                           const SizedBox(height: 8),
                           Material(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerHighest,
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(12),
+                            color: SaviaColors.surface,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(12),
+                              ),
+                              side: BorderSide(color: SaviaColors.border),
                             ),
                             clipBehavior: Clip.antiAlias,
                             child: TabBar(
                               controller: _receiversTabController,
-                              labelColor: Colors.blueAccent,
-                              unselectedLabelColor: Colors.black54,
                               tabs: const [
                                 Tab(icon: Icon(Icons.list), text: 'Lista'),
                                 Tab(
@@ -418,12 +419,12 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
                             ),
                           ),
                           const SizedBox(height: 8),
-                          AnimatedBuilder(
-                            animation: _receiversTabController,
-                            builder: (context, _) {
-                              if (_receiversTabController.index == 0) {
-                                if (filtered.isEmpty) {
-                                  return Padding(
+                          Visibility(
+                            visible: _receiversTabController.index == 0,
+                            maintainState: true,
+                            maintainAnimation: true,
+                            child: filtered.isEmpty
+                                ? Padding(
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 24,
                                     ),
@@ -431,14 +432,13 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
                                       child: Text(
                                         'Ningún receptor coincide con la búsqueda y los filtros.',
                                         textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: Colors.grey.shade700,
-                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium,
                                       ),
                                     ),
-                                  );
-                                }
-                                return ListView.builder(
+                                  )
+                                : ListView.builder(
                                   shrinkWrap: true,
                                   physics: const NeverScrollableScrollPhysics(),
                                   itemCount: filtered.length,
@@ -452,10 +452,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
                                         bottom: 8.0,
                                       ),
                                       child: ListTile(
-                                        leading: const Icon(
-                                          Icons.person,
-                                          color: Colors.blueGrey,
-                                        ),
+                                        leading: const Icon(Icons.person),
                                         title: Text(
                                           receiver['name'] != null &&
                                                   receiver['name']
@@ -474,8 +471,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
                                                 children: [
                                                   IconButton(
                                                     icon: const Icon(
-                                                      Icons.edit,
-                                                      color: Colors.blue,
+                                                      Icons.edit_outlined,
+                                                      color: SaviaColors.primary,
                                                     ),
                                                     onPressed: () {
                                                       Navigator.push(
@@ -483,72 +480,70 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
                                                         MaterialPageRoute(
                                                           builder: (context) =>
                                                               ReceiverFormScreen(
-                                                                campaignId: widget
-                                                                    .campaignId,
-                                                                userOrganization:
-                                                                    widget
-                                                                        .userOrganization,
-                                                                existingReceiver:
-                                                                    receiver,
-                                                              ),
+                                                            campaignId:
+                                                                widget.campaignId,
+                                                            userOrganization: widget
+                                                                .userOrganization,
+                                                            existingReceiver:
+                                                                receiver,
+                                                          ),
                                                         ),
                                                       );
                                                     },
                                                   ),
                                                   IconButton(
                                                     icon: const Icon(
-                                                      Icons.delete,
-                                                      color: Colors.red,
+                                                      Icons.delete_outline,
+                                                      color: SaviaColors.error,
                                                     ),
                                                     onPressed: () async {
                                                       final bool confirm =
-                                                          await showDialog<
-                                                            bool
-                                                          >(
-                                                            context: context,
-                                                            builder: (ctx) => AlertDialog(
-                                                              title: const Text(
-                                                                '¿Borrar receptor?',
-                                                              ),
-                                                              content: const Text(
-                                                                'Esta acción no se puede deshacer.',
-                                                              ),
-                                                              actions: [
-                                                                TextButton(
-                                                                  onPressed: () =>
-                                                                      Navigator.pop(
+                                                          await showDialog<bool>(
+                                                                context: context,
+                                                                builder: (ctx) =>
+                                                                    AlertDialog(
+                                                                  title: const Text(
+                                                                    '¿Borrar receptor?',
+                                                                  ),
+                                                                  content: const Text(
+                                                                    'Esta acción no se puede deshacer.',
+                                                                  ),
+                                                                  actions: [
+                                                                    TextButton(
+                                                                      onPressed: () =>
+                                                                          Navigator.pop(
                                                                         ctx,
                                                                         false,
                                                                       ),
-                                                                  child: const Text(
-                                                                    'Cancelar',
-                                                                  ),
-                                                                ),
-                                                                TextButton(
-                                                                  onPressed: () =>
-                                                                      Navigator.pop(
+                                                                      child: const Text(
+                                                                        'Cancelar',
+                                                                      ),
+                                                                    ),
+                                                                    TextButton(
+                                                                      onPressed: () =>
+                                                                          Navigator.pop(
                                                                         ctx,
                                                                         true,
                                                                       ),
-                                                                  child: const Text(
-                                                                    'Borrar',
-                                                                    style: TextStyle(
-                                                                      color: Colors
-                                                                          .red,
+                                                                      child: const Text(
+                                                                        'Borrar',
+                                                                        style: TextStyle(
+                                                                          color: SaviaColors
+                                                                              .error,
+                                                                        ),
+                                                                      ),
                                                                     ),
-                                                                  ),
+                                                                  ],
                                                                 ),
-                                                              ],
-                                                            ),
-                                                          ) ??
-                                                          false;
+                                                              ) ??
+                                                              false;
 
                                                       if (confirm) {
                                                         await FirestoreService()
                                                             .deleteReceiver(
-                                                              receiver['docId']
-                                                                  as String,
-                                                            );
+                                                          receiver['docId']
+                                                              as String,
+                                                        );
                                                       }
                                                     },
                                                   ),
@@ -556,7 +551,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
                                               )
                                             : const Icon(
                                                 Icons.chevron_right,
-                                                color: Colors.grey,
+                                                color: SaviaColors.textMuted,
                                               ),
                                         onTap: () {
                                           showReceiverEssentialPopup(
@@ -567,13 +562,20 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
                                       ),
                                     );
                                   },
-                                );
-                              }
-                              return SizedBox(
-                                height: h,
-                                child: ReceiversMapView(receivers: filtered),
-                              );
-                            },
+                                ),
+                          ),
+                          Visibility(
+                            visible: _receiversTabController.index == 1,
+                            maintainState: true,
+                            maintainAnimation: true,
+                            child: SizedBox(
+                              height: h,
+                              width: double.infinity,
+                              child: ReceiversMapView(
+                                key: _mapKey,
+                                receivers: filtered,
+                              ),
+                            ),
                           ),
                         ],
                       );

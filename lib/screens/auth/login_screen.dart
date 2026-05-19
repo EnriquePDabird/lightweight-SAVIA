@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
-import '../home/home_screen.dart';
+import '../../theme/savia_colors.dart';
+import '../../widgets/savia_widgets.dart';
+import '../home/main_shell_screen.dart';
+import '../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,8 +16,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // Añadimos una variable para controlar el estado de carga
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _rememberSession = false;
 
   @override
   void dispose() {
@@ -24,33 +27,22 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // Creamos la función que se ejecutará al presionar el botón
   void _iniciarSesion() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
-    // 1. Hablamos con Firebase Auth
-    final user = await AuthService().signInWithEmailAndPassword(
-      email,
-      password,
-    );
+    final user = await AuthService().signInWithEmailAndPassword(email, password);
 
     if (user != null) {
-      // 2. Si el login fue exitoso, buscamos sus datos en Firestore
       final userData = await FirestoreService().getUserDataById(user.uid);
 
       if (!mounted) return;
 
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
 
       if (userData != null) {
-        // Tenemos los datos Leemos si está activo y su rol
         final bool isActive = userData['active'] == true;
 
         if (isActive) {
@@ -60,121 +52,162 @@ class _LoginScreenState extends State<LoginScreen> {
           final String userRole = userData['role'] ?? '';
 
           if (org.isNotEmpty) {
+            final email = user.email ?? AuthService().currentUserEmail ?? '';
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (context) => HomeScreen(
+                builder: (context) => MainShellScreen(
                   organization: org,
                   userName: firstName,
                   userLastName: lastName,
                   userRole: userRole,
+                  userEmail: email,
                 ),
               ),
             );
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Tu usuario no tiene organización asignada en Firestore.',
-                ),
-                backgroundColor: Colors.orange,
-              ),
+            _showSnack(
+              'Tu usuario no tiene organización asignada en Firestore.',
+              SaviaColors.primary,
             );
           }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Tu cuenta está desactivada.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
+          _showSnack('Tu cuenta está desactivada.', SaviaColors.primary);
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error: No se encontraron datos del usuario.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showSnack('Error: No se encontraron datos del usuario.', SaviaColors.error);
       }
     } else {
       if (!mounted) return;
-      // Falló el login en Auth
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error: Revisa tus credenciales'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      setState(() => _isLoading = false);
+      _showSnack('Error: Revisa tus credenciales', SaviaColors.error);
     }
+  }
+
+  void _showSnack(String message, Color bg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: bg),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: SaviaColors.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  '¡Bienvenido de nuevo!',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 40),
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Correo electrónico',
-                    prefixIcon: const Icon(Icons.email_outlined),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 16),
+                  const Center(child: SaviaLogo()),
+                  const SizedBox(height: 40),
+                  Text(
+                    '¡Bienvenido de nuevo!',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Accede a tu panel de gestión de campañas',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 36),
+                  const SaviaFieldLabel('Correo electrónico'),
+                  TextField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    style: const TextStyle(color: SaviaColors.textPrimary),
+                    decoration: const InputDecoration(
+                      hintText: 'nombre@empresa.com',
+                      prefixIcon: Icon(Icons.email_outlined),
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'Contraseña',
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 30),
-
-                // Actualizamos el botón
-                ElevatedButton(
-                  // Si está cargando, deshabilitamos el botón (onPressed: null)
-                  onPressed: _isLoading ? null : _iniciarSesion,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    backgroundColor: Colors.blueAccent,
-                  ),
-                  // Si está cargando, mostramos la ruedita, si no, el texto
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Iniciar Sesión',
-                          style: TextStyle(fontSize: 18, color: Colors.white),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const SaviaFieldLabel('Contraseña'),
+                      TextButton(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Contacta con tu administrador.'),
+                            ),
+                          );
+                        },
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                ),
-              ],
+                        child: const Text(
+                          '¿Lo olvidaste?',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    style: const TextStyle(color: SaviaColors.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: '••••••••',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                        ),
+                        onPressed: () =>
+                            setState(() => _obscurePassword = !_obscurePassword),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: Checkbox(
+                          value: _rememberSession,
+                          onChanged: (v) =>
+                              setState(() => _rememberSession = v ?? false),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Mantener sesión iniciada',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  SaviaPrimaryButton(
+                    label: 'Iniciar Sesión',
+                    loading: _isLoading,
+                    trailingIcon: Icons.arrow_forward,
+                    onPressed: _iniciarSesion,
+                  ),
+                  const SizedBox(height: 48),
+                  Text(
+                    '© 2024 SAVIA - Consultoría para la sostenibilidad ambiental',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontSize: 10,
+                          color: SaviaColors.textMuted,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

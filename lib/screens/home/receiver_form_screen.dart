@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/firestore_service.dart';
+import '../../theme/savia_colors.dart';
+import '../../widgets/savia_widgets.dart';
 
 class ReceiverFormScreen extends StatefulWidget {
   final String campaignId;
@@ -214,7 +216,6 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
     }
   }
 
-  // Helper widget for text fields
   Widget _buildTextField(
     TextEditingController controller,
     String label, {
@@ -222,22 +223,25 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
     bool isRequired = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: TextFormField(
-        controller: controller,
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-        ),
-        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-        validator: isRequired
-            ? (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Por favor, ingresa $label';
-                }
-                return null;
-              }
-            : null,
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SaviaFieldLabel(label),
+          TextFormField(
+            controller: controller,
+            style: const TextStyle(color: SaviaColors.textPrimary),
+            keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+            validator: isRequired
+                ? (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Por favor, ingresa $label';
+                    }
+                    return null;
+                  }
+                : null,
+          ),
+        ],
       ),
     );
   }
@@ -246,186 +250,160 @@ class _ReceiverFormScreenState extends State<ReceiverFormScreen> {
   Widget build(BuildContext context) {
     final isEditing = widget.existingReceiver != null;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Editar Receptor' : 'Añadir Receptor'),
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
-      ),
+    return SaviaScaffold(
+      title: isEditing ? 'Editar Receptor' : 'Añadir Receptor',
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               child: Form(
                 key: _formKey,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Switch de Activo
-                    SwitchListTile(
-                      title: const Text('Usuario Activo'),
-                      value: _isActive,
-                      onChanged: (val) {
-                        setState(() {
-                          _isActive = val;
-                        });
-                      },
-                      activeThumbColor: Colors.blueAccent,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // --- Información General ---
-                    const Text(
-                      'Información General',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Divider(),
-                    _buildTextField(
-                      _nameController,
-                      'Nombre',
-                      isRequired: true,
-                    ),
-                    _buildTextField(
-                      _phoneController,
-                      'Teléfono',
-                      isRequired: true,
-                    ),
-                    _buildTextField(_emailController, 'Correo Electrónico'),
-
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedSex,
-                        decoration: const InputDecoration(
-                          labelText: 'Sexo',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'Hombre',
-                            child: Text('Hombre'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'Mujer',
-                            child: Text('Mujer'),
-                          ),
-                          DropdownMenuItem(value: 'Otro', child: Text('Otro')),
-                        ],
-                        onChanged: (val) {
-                          if (val != null) {
-                            setState(() {
-                              _selectedSex = val;
-                            });
-                          }
-                        },
-                      ),
-                    ),
-
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Organización',
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Color(0xFFF3F4F6),
-                        ),
-                        child: Text(
-                          widget.userOrganization,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                    _buildTextField(_groupController, 'Grupo'),
-                    _buildTextField(_orderController, 'Orden', isNumber: true),
-
-                    const SizedBox(height: 24),
-
-                    // --- Ubicación ---
-                    const Text(
-                      'Ubicación Geográfica',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Divider(),
-                    _buildTextField(_countryController, 'País'),
-                    _buildTextField(_regionController, 'Región'),
-                    _buildTextField(_provinceController, 'Provincia'),
-                    _buildTextField(_municipalityController, 'Municipalidad'),
-                    _buildTextField(_districtController, 'Distrito'),
-
-                    const SizedBox(height: 24),
-
-                    // --- Coordenadas ---
-                    const Text(
-                      'Coordenadas',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Divider(),
-                    Row(
+                    SaviaSectionCard(
+                      icon: Icons.toggle_on_outlined,
+                      title: 'Estado',
                       children: [
-                        Expanded(
-                          child: _buildTextField(
-                            _latController,
-                            'Latitud',
-                            isNumber: true,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildTextField(
-                            _lngController,
-                            'Longitud',
-                            isNumber: true,
-                          ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Usuario Activo'),
+                          value: _isActive,
+                          onChanged: (val) => setState(() => _isActive = val),
                         ),
                       ],
                     ),
-
-                    const SizedBox(height: 24),
-
-                    // --- Códigos de Ubicación ---
-                    const Text(
-                      'Códigos de Ubicación',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    SaviaSectionCard(
+                      icon: Icons.person_outline,
+                      title: 'Información General',
+                      children: [
+                        _buildTextField(
+                          _nameController,
+                          'Nombre',
+                          isRequired: true,
+                        ),
+                        _buildTextField(
+                          _phoneController,
+                          'Teléfono',
+                          isRequired: true,
+                        ),
+                        _buildTextField(_emailController, 'Correo Electrónico'),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SaviaFieldLabel('Sexo'),
+                              DropdownButtonFormField<String>(
+                                value: _selectedSex,
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'Hombre',
+                                    child: Text('Hombre'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Mujer',
+                                    child: Text('Mujer'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Otro',
+                                    child: Text('Otro'),
+                                  ),
+                                ],
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setState(() => _selectedSex = val);
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SaviaFieldLabel('Organización'),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: SaviaColors.inputFill,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: SaviaColors.border),
+                                ),
+                                child: Text(
+                                  widget.userOrganization,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: SaviaColors.textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _buildTextField(_groupController, 'Grupo'),
+                        _buildTextField(_orderController, 'Orden', isNumber: true),
+                      ],
                     ),
-                    const Divider(),
-                    _buildTextField(_countryCodeController, 'Country Code'),
-                    _buildTextField(_admin1CodeController, 'Admin 1 Code'),
-                    _buildTextField(_admin2CodeController, 'Admin 2 Code'),
-                    _buildTextField(_admin3CodeController, 'Admin 3 Code'),
-                    _buildTextField(_admin4CodeController, 'Admin 4 Code'),
-
-                    const SizedBox(height: 32),
-
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
-                          foregroundColor: Colors.white,
+                    SaviaSectionCard(
+                      icon: Icons.place_outlined,
+                      title: 'Ubicación Geográfica',
+                      children: [
+                        _buildTextField(_countryController, 'País'),
+                        _buildTextField(_regionController, 'Región'),
+                        _buildTextField(_provinceController, 'Provincia'),
+                        _buildTextField(_municipalityController, 'Municipalidad'),
+                        _buildTextField(_districtController, 'Distrito'),
+                      ],
+                    ),
+                    SaviaSectionCard(
+                      icon: Icons.my_location_outlined,
+                      title: 'Coordenadas',
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _buildTextField(
+                                _latController,
+                                'Latitud',
+                                isNumber: true,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildTextField(
+                                _lngController,
+                                'Longitud',
+                                isNumber: true,
+                              ),
+                            ),
+                          ],
                         ),
-                        onPressed: _saveReceiver,
-                        child: Text(
-                          isEditing ? 'Guardar Cambios' : 'Crear Receptor',
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ),
+                      ],
+                    ),
+                    SaviaSectionCard(
+                      icon: Icons.numbers_outlined,
+                      title: 'Códigos de Ubicación',
+                      children: [
+                        _buildTextField(_countryCodeController, 'Country Code'),
+                        _buildTextField(_admin1CodeController, 'Admin 1 Code'),
+                        _buildTextField(_admin2CodeController, 'Admin 2 Code'),
+                        _buildTextField(_admin3CodeController, 'Admin 3 Code'),
+                        _buildTextField(_admin4CodeController, 'Admin 4 Code'),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SaviaPrimaryButton(
+                      label: isEditing ? 'Guardar Cambios' : 'Crear Receptor',
+                      trailingIcon: Icons.person_add_outlined,
+                      onPressed: _isLoading ? null : _saveReceiver,
                     ),
                   ],
                 ),

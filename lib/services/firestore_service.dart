@@ -76,7 +76,31 @@ class FirestoreService {
     }
   }
 
-  // Método para escuchar los receptores de una campaña en tiempo real
+  /// Receptores de varias campañas (lotes de 10 por límite de Firestore `whereIn`).
+  Future<List<Map<String, dynamic>>> getReceiversForCampaigns(
+    List<String> campaignIds,
+  ) async {
+    if (campaignIds.isEmpty) return [];
+
+    final results = <Map<String, dynamic>>[];
+    for (var i = 0; i < campaignIds.length; i += 10) {
+      final end = (i + 10 > campaignIds.length) ? campaignIds.length : i + 10;
+      final batch = campaignIds.sublist(i, end);
+      final snapshot = await _db
+          .collection('tests')
+          .doc('app_tests')
+          .collection('campaignReceivers')
+          .where('campaignId', whereIn: batch)
+          .get();
+      for (final doc in snapshot.docs) {
+        final data = Map<String, dynamic>.from(doc.data());
+        data['docId'] = doc.id;
+        results.add(data);
+      }
+    }
+    return results;
+  }
+
   Stream<List<Map<String, dynamic>>> getReceiversStream(String campaignId) {
     return _db
         .collection('tests')
