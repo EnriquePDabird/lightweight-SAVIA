@@ -57,6 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
               context,
               MaterialPageRoute(
                 builder: (context) => MainShellScreen(
+                  userId: user.uid,
                   organization: org,
                   userName: firstName,
                   userLastName: lastName,

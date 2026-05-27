@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/firestore_service.dart';
 import '../../theme/savia_colors.dart';
+import '../../utils/campaign_members.dart';
 import '../../utils/list_query_utils.dart';
 import '../../widgets/receiver_summary_popup.dart';
 import '../../widgets/receivers_map_view.dart';
@@ -9,12 +10,14 @@ import 'receiver_form_screen.dart';
 
 class CampaignDetailScreen extends StatefulWidget {
   final String campaignId;
+  final String userId;
   final String userRole;
   final String userOrganization;
 
   const CampaignDetailScreen({
     super.key,
     required this.campaignId,
+    required this.userId,
     required this.userRole,
     required this.userOrganization,
   });
@@ -116,6 +119,20 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen>
           }
 
           final campaignData = snapshot.data!;
+
+          if (!campaignHasMember(campaignData, widget.userId)) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'No tienes acceso a esta campaña. '
+                  'Tu usuario debe estar en el array members.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
+
           final String campaignName =
               (campaignData['name'] == null || campaignData['name'] == '')
               ? "Campaña sin nombre"

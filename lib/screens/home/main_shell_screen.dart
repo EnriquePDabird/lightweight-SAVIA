@@ -9,6 +9,7 @@ import 'campaigns_tab.dart';
 
 /// Contenedor principal tras el login: pestañas Campañas / Receptores.
 class MainShellScreen extends StatefulWidget {
+  final String userId;
   final String organization;
   final String userName;
   final String userLastName;
@@ -17,6 +18,7 @@ class MainShellScreen extends StatefulWidget {
 
   const MainShellScreen({
     super.key,
+    required this.userId,
     required this.organization,
     required this.userName,
     required this.userLastName,
@@ -94,6 +96,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         index: _tab == SaviaNavTab.campanas ? 0 : 1,
         children: [
           CampaignsTab(
+            userId: widget.userId,
             organization: widget.organization,
             userName: widget.userName,
             userLastName: widget.userLastName,
@@ -102,7 +105,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
             onSortChanged: (m) => setState(() => _campaignSort = m),
           ),
           AllReceiversTab(
-            organization: widget.organization,
+            userId: widget.userId,
             userRole: widget.userRole,
           ),
         ],

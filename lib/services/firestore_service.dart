@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../utils/campaign_members.dart';
+
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
@@ -28,11 +30,10 @@ class FirestoreService {
     }
   }
 
-  /// Campañas cuyo campo [organization] coincide con el del usuario.
-  Future<List<Map<String, dynamic>>> getCampaignsByOrganization(
-    String organization,
-  ) async {
-    if (organization.isEmpty) {
+  /// Campañas en las que el usuario figura en el array [members] (UIDs).
+  Future<List<Map<String, dynamic>>> getCampaignsForMember(String userId) async {
+    final uid = userId.trim();
+    if (uid.isEmpty) {
       return [];
     }
     try {
@@ -40,16 +41,28 @@ class FirestoreService {
           .collection('tests')
           .doc('app_tests')
           .collection('campaigns')
-          .where('organization', isEqualTo: organization)
+          .where('members', arrayContains: uid)
           .get();
 
-      return snapshot.docs.map((doc) {
-        final data = Map<String, dynamic>.from(doc.data());
-        data['campaignId'] = doc.id;
-        return data;
-      }).toList();
+      return snapshot.docs
+          .map((doc) {
+            final data = Map<String, dynamic>.from(doc.data());
+            data['campaignId'] = doc.id;
+            return data;
+          })
+          .where((c) => campaignHasMember(c, uid))
+          .toList();
+    } on FirebaseException catch (e) {
+      if (e.code == 'failed-precondition') {
+        throw Exception(
+          'Falta el índice de Firestore para members (array-contains). '
+          'Abre el enlace del error en la consola de Firebase y créalo.',
+        );
+      }
+      print('Error leyendo campañas del miembro: $e');
+      rethrow;
     } catch (e) {
-      print('Error leyendo campañas por organización: $e');
+      print('Error leyendo campañas del miembro: $e');
       rethrow;
     }
   }
@@ -65,7 +78,11 @@ class FirestoreService {
           .get();
 
       if (docSnapshot.exists) {
-        return docSnapshot.data() as Map<String, dynamic>;
+        final data = Map<String, dynamic>.from(
+          docSnapshot.data()! as Map<String, dynamic>,
+        );
+        data['campaignId'] = docSnapshot.id;
+        return data;
       } else {
         print('La campaña con ID $campaignId no existe');
         return null;

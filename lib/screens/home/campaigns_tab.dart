@@ -5,8 +5,9 @@ import '../../theme/savia_colors.dart';
 import '../../utils/list_query_utils.dart';
 import 'campaign_detail_screen.dart';
 
-/// Listado de campañas de la organización del usuario.
+/// Campañas en las que el usuario es miembro ([members] en Firestore).
 class CampaignsTab extends StatefulWidget {
+  final String userId;
   final String organization;
   final String userName;
   final String userLastName;
@@ -16,6 +17,7 @@ class CampaignsTab extends StatefulWidget {
 
   const CampaignsTab({
     super.key,
+    required this.userId,
     required this.organization,
     required this.userName,
     required this.userLastName,
@@ -48,9 +50,7 @@ class _CampaignsTabState extends State<CampaignsTab> {
   }
 
   void _load() {
-    _campaignsFuture = FirestoreService().getCampaignsByOrganization(
-      widget.organization,
-    );
+    _campaignsFuture = FirestoreService().getCampaignsForMember(widget.userId);
   }
 
   Future<void> _refresh() async {
@@ -119,7 +119,7 @@ class _CampaignsTabState extends State<CampaignsTab> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 48),
                   child: Text(
-                    'No hay campañas registradas para esta organización.',
+                    'No perteneces a ninguna campaña todavía.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           fontStyle: FontStyle.italic,
@@ -286,6 +286,7 @@ class _CampaignsTabState extends State<CampaignsTab> {
                 MaterialPageRoute(
                   builder: (context) => CampaignDetailScreen(
                     campaignId: campaignId,
+                    userId: widget.userId,
                     userRole: widget.userRole,
                     userOrganization: widget.organization,
                   ),

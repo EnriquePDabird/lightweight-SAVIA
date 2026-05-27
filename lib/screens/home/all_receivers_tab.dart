@@ -5,14 +5,14 @@ import '../../theme/savia_colors.dart';
 import '../../utils/list_query_utils.dart';
 import '../../widgets/receiver_summary_popup.dart';
 
-/// Todos los receptores de las campañas de la organización.
+/// Receptores de las campañas en las que el usuario es miembro.
 class AllReceiversTab extends StatefulWidget {
-  final String organization;
+  final String userId;
   final String userRole;
 
   const AllReceiversTab({
     super.key,
-    required this.organization,
+    required this.userId,
     required this.userRole,
   });
 
@@ -37,7 +37,7 @@ class _AllReceiversTabState extends State<AllReceiversTab> {
 
   Future<_ReceiversBundle> _fetch() async {
     final fs = FirestoreService();
-    final campaigns = await fs.getCampaignsByOrganization(widget.organization);
+    final campaigns = await fs.getCampaignsForMember(widget.userId);
     final ids = campaigns
         .map((c) => c['campaignId'] as String? ?? '')
         .where((id) => id.isNotEmpty)
@@ -104,7 +104,7 @@ class _AllReceiversTabState extends State<AllReceiversTab> {
               Text('Receptores', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 4),
               Text(
-                'Todos los receptores de tus campañas',
+                'Receptores de tus campañas asignadas',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
@@ -112,7 +112,7 @@ class _AllReceiversTabState extends State<AllReceiversTab> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 48),
                   child: Text(
-                    'No hay receptores en ninguna campaña de tu organización.',
+                    'No hay receptores en tus campañas asignadas.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           fontStyle: FontStyle.italic,
